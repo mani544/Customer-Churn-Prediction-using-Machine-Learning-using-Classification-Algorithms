@@ -1,0 +1,66 @@
+/* assets/style.css - paste file into assets/ folder and keep the filename same */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
+.stApp, .block-container {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Page background */
+.stApp {
+    background: linear-gradient(180deg, #071133 0%, #08132a 100%);
+    color: #e6eef8;
+}
+
+/* Container padding */
+.block-container {
+    padding-top: 1.2rem;
+    padding-bottom: 2rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+/* Card / table */
+.card {
+    background: rgba(255,255,255,0.03);
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 8px 30px rgba(3,7,18,0.6);
+}
+
+/* Titles */
+.big-title {
+    font-size: 28px;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+/* Muted */
+.muted {
+    color: #9fb0cf;
+}
+
+/* Dataframe styling fallback */
+.css-1b3pqpe { /* streamlit table container class may vary */
+    background: rgba(255,255,255,0.02);
+}
+
+/* Metric card colors */
+.stMetricLabel, .stMetricValue {
+    color: #e6eef8 !important;
+}
+
+/* Buttons */
+.stButton>button {
+    background: linear-gradient(90deg, #00b8d9, #ff8c42);
+    color: white;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+/* Footer */
+.footer {
+    color: #b6c2d6;
+    font-size: 12px;
+    opacity: 0.9;
+}
