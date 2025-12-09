@@ -3,6 +3,7 @@
 ---
 
 # 🚀 **Customer Churn Prediction – Machine Learning Project**
+![Image](https://github.com/mani544/Customer-Churn-Prediction-using-Machine-Learning-using-Classification-Algorithms/blob/main/assets/logo.png)
 
 <p align="center">
 
