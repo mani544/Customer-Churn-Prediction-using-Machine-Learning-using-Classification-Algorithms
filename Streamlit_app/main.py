@@ -10,7 +10,7 @@ import os
 # ------------------------------------------------------
 st.set_page_config(
     page_title="Customer Churn Prediction Lab",
-    page_icon="jp",
+    page_icon="📊",
     layout="wide"
 )
 
@@ -25,14 +25,12 @@ except ImportError:
 
 try:
     from streamlit_lottie import st_lottie
-
     LOTTIE_AVAILABLE = True
 except ImportError:
     LOTTIE_AVAILABLE = False
 
 try:
     import plotly.express as px
-
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
@@ -50,11 +48,17 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
-from xgboost import XGBClassifier
-
+# xgboost might not be installed in some environments; keep import as-is
+try:
+    from xgboost import XGBClassifier
+    XGBOOST_AVAILABLE = True
+except Exception:
+    XGBOOST_AVAILABLE = False
+    # Provide a lightweight fallback classifier if needed
+    XGBClassifier = None
 
 # ------------------------------------------------------
-# 3. CSS & UI Styling
+# 3. CSS & UI Styling (Merged CSS from both sources)
 # ------------------------------------------------------
 def local_css():
     st.markdown(
@@ -62,24 +66,43 @@ def local_css():
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
 
+        /***** Combined Inline CSS (previous local_css + assets/style.css) *****/
+
         /* Fix header cutoff */
         .block-container {
             padding-top: 2rem !important;
         }
 
-        /* App Background */
+        /* App Background (merged) */
         .stApp {
-            background-color: #0e1117;
+            /* gradient background from assets/style.css for richer look */
+            background: linear-gradient(180deg, #071133 0%, #08132a 100%);
             font-family: 'Inter', sans-serif;
+            color: #e6eef8;
         }
 
-        /* Custom Card Style */
+        /* Container padding (from assets/style.css) */
+        .block-container {
+            padding-top: 1.2rem;
+            padding-bottom: 2rem;
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+
+        /* Custom Card Style (kept dark card style) */
         .metric-card {
             background-color: #262730;
             border: 1px solid #464b5d;
             border-radius: 8px;
             padding: 15px;
             color: white;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 0 8px 30px rgba(3,7,18,0.6);
         }
 
         .big-title {
@@ -94,23 +117,56 @@ def local_css():
             font-size: 1rem;
         }
 
-        /* Button Styling */
+        /* Dataframe / table fallback */
+        .css-1b3pqpe { /* streamlit table container class may vary */
+            background: rgba(255,255,255,0.02);
+        }
+
+        /* Metric card colors (ensure metrics are visible) */
+        .stMetricLabel, .stMetricValue {
+            color: #e6eef8 !important;
+        }
+
+        /* Button Styling (merged gradients) */
         div.stButton > button {
             background: linear-gradient(90deg, #00b8d9, #ff8c42);
             color: white;
             border: none;
-            border-radius: 6px;
-            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            padding: 8px 12px;
             font-weight: 600;
         }
         div.stButton > button:hover {
             border: 1px solid white;
         }
+
+        /* Smaller buttons (original) */
+        div.stButton > button {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+        }
+
+        /* Footer */
+        .footer {
+            color: #b6c2d6;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        /* Misc adjustments */
+        .streamlit-expanderHeader {
+            color: #dbe9ff;
+        }
+
+        /* Keep charts readable */
+        .plotly-graph-div .main-svg {
+            background: transparent;
+        }
+
         </style>
         """,
         unsafe_allow_html=True,
     )
-
 
 # ------------------------------------------------------
 # 4. Helper Functions
@@ -123,7 +179,6 @@ def load_lottieurl(url: str):
     except:
         return None
     return None
-
 
 def render_header():
     col1, col2 = st.columns([1, 5])
@@ -142,13 +197,15 @@ def render_header():
         st.markdown("<div class='muted'>Model Comparison • XGBoost • SVM • Real-time Inference</div>",
                     unsafe_allow_html=True)
 
-    # Lottie Animation
+    # Lottie Animation (if available)
     if LOTTIE_AVAILABLE:
         lottie_url = "https://assets3.lottiefiles.com/packages/lf20_jcikwtux.json"
         lottie_json = load_lottieurl(lottie_url)
         if lottie_json:
-            st_lottie(lottie_json, height=150, key="header_lottie")
-
+            try:
+                st_lottie(lottie_json, height=150, key="header_lottie")
+            except Exception:
+                pass
 
 # ------------------------------------------------------
 # 5. Core Machine Learning Logic
@@ -198,7 +255,10 @@ def train_churn_models(df: pd.DataFrame):
         "Random Forest": RandomForestClassifier(n_estimators=200, random_state=42),
         "Naive Bayes": GaussianNB(),
         "SVM": SVC(probability=True, random_state=42),
-        "XGBoost": XGBClassifier(
+    }
+
+    if XGBOOST_AVAILABLE and XGBClassifier is not None:
+        models["XGBoost"] = XGBClassifier(
             n_estimators=200,
             learning_rate=0.1,
             max_depth=4,
@@ -208,7 +268,9 @@ def train_churn_models(df: pd.DataFrame):
             random_state=42,
             n_jobs=-1
         )
-    }
+    else:
+        # If xgboost not available, provide warning metric later but continue
+        st.warning("XGBoost not available in this environment — skipping XGBoost model.")
 
     # Models that require scaling
     scaled_models = ["Logistic Regression", "KNN", "Naive Bayes", "SVM"]
@@ -235,9 +297,18 @@ def train_churn_models(df: pd.DataFrame):
         if hasattr(model, "predict_proba"):
             y_prob = model.predict_proba(X_te)[:, 1]
         elif hasattr(model, "decision_function"):
-            # Fallback for models without predict_proba but with decision_function
             scores = model.decision_function(X_te)
-            y_prob = (scores - scores.min()) / (scores.max() - scores.min())
+            # Protect against constant scores
+            if scores.max() != scores.min():
+                y_prob = (scores - scores.min()) / (scores.max() - scores.min())
+            else:
+                y_prob = np.zeros_like(scores)
+
+        # ROC_AUC requires probability-like scores; if none available default to 0.5
+        try:
+            roc_val = roc_auc_score(y_test, y_prob) if y_prob is not None else 0.5
+        except Exception:
+            roc_val = 0.5
 
         metrics = {
             "Model": name,
@@ -245,14 +316,14 @@ def train_churn_models(df: pd.DataFrame):
             "Precision": precision_score(y_test, y_pred, zero_division=0),
             "Recall": recall_score(y_test, y_pred, zero_division=0),
             "F1": f1_score(y_test, y_pred, zero_division=0),
-            "ROC_AUC": roc_auc_score(y_test, y_prob) if y_prob is not None else 0.5,
+            "ROC_AUC": roc_val,
         }
         results.append(metrics)
         progress_bar.progress((idx + 1) / total_models)
 
     progress_bar.empty()
 
-    results_df = pd.DataFrame(results).sort_values(by="ROC_AUC", ascending=False)
+    results_df = pd.DataFrame(results).sort_values(by="ROC_AUC", ascending=False).reset_index(drop=True)
     best_model_name = results_df.iloc[0]["Model"]
 
     # Pack test sets for visualization later
@@ -260,14 +331,12 @@ def train_churn_models(df: pd.DataFrame):
 
     return trained_models, scaler, feature_cols, results_df, best_model_name, scaled_models, test_sets
 
-
 def build_feature_row(feature_cols, age, tenure, usage_freq, support_calls, payment_delay, total_spend,
                       last_interaction, gender, subscription_type, contract_length):
     # Create a DataFrame with zeros
     row = pd.DataFrame(0, index=[0], columns=feature_cols)
 
     # Manual mapping based on inputs
-    # Note: Column names here must match the CSV column headers roughly
     mapping = {
         "Age": age,
         "Tenure": tenure,
@@ -291,14 +360,17 @@ def build_feature_row(feature_cols, age, tenure, usage_freq, support_calls, paym
         row.at[0, "Subscription Type_Standard"] = 1
     elif subscription_type == "Premium" and "Subscription Type_Premium" in row.columns:
         row.at[0, "Subscription Type_Premium"] = 1
+    elif subscription_type == "Basic" and "Subscription Type_Basic" in row.columns:
+        row.at[0, "Subscription Type_Basic"] = 1
 
     if contract_length == "Monthly" and "Contract Length_Monthly" in row.columns:
         row.at[0, "Contract Length_Monthly"] = 1
     elif contract_length == "Quarterly" and "Contract Length_Quarterly" in row.columns:
         row.at[0, "Contract Length_Quarterly"] = 1
+    elif contract_length == "Annual" and "Contract Length_Annual" in row.columns:
+        row.at[0, "Contract Length_Annual"] = 1
 
     return row
-
 
 def plot_roc_bar(results_df):
     if PLOTLY_AVAILABLE:
@@ -317,7 +389,6 @@ def plot_roc_bar(results_df):
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.bar_chart(results_df.set_index("Model")["ROC_AUC"])
-
 
 def show_confusion_matrices(models, X_test, X_test_scaled, y_test, scaled_models):
     n = len(models)
@@ -351,7 +422,6 @@ def show_confusion_matrices(models, X_test, X_test_scaled, y_test, scaled_models
 
     plt.tight_layout()
     st.pyplot(fig)
-
 
 # ------------------------------------------------------
 # 6. Main Execution
@@ -516,8 +586,11 @@ def main():
                     pred_prob = model.predict_proba(row_processed)[0][1]
                 else:
                     # Fallback for models without proba
-                    d = model.decision_function(row_processed)
-                    pred_prob = 1 / (1 + np.exp(-d))[0]  # Sigmoid approximation
+                    try:
+                        d = model.decision_function(row_processed)
+                        pred_prob = 1 / (1 + np.exp(-d))[0]  # Sigmoid approximation
+                    except Exception:
+                        pred_prob = 0.5
 
                 pred_class = model.predict(row_processed)[0]
 
@@ -533,7 +606,6 @@ def main():
                         st.error(f"⚠️ **High Risk**: This customer is likely to churn.")
                     else:
                         st.success(f"✅ **Low Risk**: This customer is likely to stay.")
-
 
 if __name__ == "__main__":
     main()
